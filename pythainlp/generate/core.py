@@ -26,6 +26,8 @@ from pythainlp.corpus.ttc import unigram_word_freqs as ttc_word_freqs_unigram
 from pythainlp.corpus.oscar import (
     unigram_word_freqs as oscar_word_freqs_unigram,
 )
+import torch
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
 from typing import List, Union
 
 
@@ -305,3 +307,25 @@ class Trigram:
         if output_str:
             return "".join(self.listdata)
         return self.listdata
+
+class GPT:
+    def __init__(self, model_name: str = "gpt2"):
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.known_models = {
+            "gpt2": "kobkrit/openthaigpt-gpt2-instructgpt-poc-0.0.4",
+        }
+        if model_name not in self.known_models:
+            raise ValueError(
+                f"model_name must be one of {list(self.known_models.keys())}"
+            )
+        self.model_path = self.known_models[model_name]
+        self.tokenizer = GPT2Tokenizer.from_pretrained(self.model_path)
+        self.model = GPT2LMHeadModel.from_pretrained(self.model_path).to(self.device)
+        self.model.resize_token_embeddings(len(self.tokenizer))
+    
+    
+    def gen_sentence(input, max_length=300, top_k=50, top_p=0.95, num_beam=5, no_repeat_ngram_size=2, early_stopping=True, temperature=1.9):
+        generated = tokenizer("<|startoftext|>"+input, return_tensors="pt").input_ids.to(self.device)
+        output = model.generate(generated, top_k=top_k, num_beams=num_beam, no_repeat_ngram_size=no_repeat_ngram_size, 
+            early_stopping=early_stopping, max_length=max_length, top_p=top_p, temperature=temperature)
+        return tokenizer.decode(output[0], skip_special_tokens=True)
